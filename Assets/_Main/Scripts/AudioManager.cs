@@ -137,8 +137,13 @@ public class AudioManager : MonoBehaviour
 
     private void Awake()
 	{
-        if (!ins)
+        if (ins == null)
             ins = this;
+        else
+        {
+            Destroy(gameObject);
+            return;
+        }
 
         backgroundMusic = GetComponents<AudioSource>()[0];
         blockSound = GetComponents<AudioSource>()[1];

@@ -1,6 +1,4 @@
 ﻿using UnityEngine;
-using UnityEngine.UI;
-using TMPro;
 
 public class ScenesManager : MonoBehaviour
 {
@@ -50,12 +48,33 @@ public class ScenesManager : MonoBehaviour
     {
         if (!transition)
         {
+            // Start transition FIRST
             transitionPanel.gameObject.SetActive(true);
             transitionPanel.SetAnimation(false, Constants.SCENE_TRANSITION_DUR, currentScene, Scene.Game);
 
             currentScene = Scene.Game;
+
+            // Reset game state (score + flags) so Play always starts fresh
+            if (GameManager.ins != null)
+            {
+                GameManager.ins.gameOver = false;
+                GameManager.ins.firstBeatenScore = GameManager.ins.continueGame = true;
+                GameManager.ins.score = 0;
+                if (GameManager.ins.scoreText != null)
+                    GameManager.ins.scoreText.text = "0";
+                if (GameManager.ins.bestScoreIconLayer != null)
+                    GameManager.ins.bestScoreIconLayer.GetComponent<Animator>().Play("Idle");
+            }
+
+            // THEN load level (this happens during the transition)
+            if (LevelManager.ins != null)
+            {
+                LevelManager.ins.ResetSequence(); // optional but explicit
+                LevelManager.ins.LoadLevel(LevelManager.ins.levelData);
+            }
         }
     }
+
 
     public void RestartGame()
     {
@@ -93,6 +112,8 @@ public class ScenesManager : MonoBehaviour
 
         currentScene = Scene.Game;
     }
+
+    // Add these debug versions to your ScenesManager temporarily:
 
     public void HideScene(Scene s)
     {
@@ -180,6 +201,6 @@ public class ScenesManager : MonoBehaviour
         if (!ins)
             ins = this;
 
-        pauseScreen = FindObjectOfType<PauseScreen>();
+        pauseScreen = FindFirstObjectByType<PauseScreen>();
     }
 }

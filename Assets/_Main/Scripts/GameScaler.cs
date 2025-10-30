@@ -92,13 +92,15 @@ public class GameScaler : MonoBehaviour
 
         Camera.main.orthographicSize = GetOrthographicSize();
 
+        yield return new WaitUntil(() => IsBoardReady());
+        yield return null;
         int y = GetScoreY();
         
         SetPositionY(GameManager.ins.bestScoreIconLayer.GetComponent<RectTransform>(), y);
         SetPositionY(GameManager.ins.scoreLayer.GetComponent<RectTransform>(), y);
 
         float blockY = GetBlockY();
-        for (int i = 0; i < BoardManager.BLOCKS_AMOUNT; i++)
+        for (int i = 0; i < BoardManager.ins.blocks.Length; i++)
         {
             if (BoardManager.ins.blocks[i])
             {
@@ -110,5 +112,10 @@ public class GameScaler : MonoBehaviour
 
         Vector3 bgSize = new Vector3(2 * Camera.main.orthographicSize / GetAspectRatio(), Camera.main.orthographicSize, 1);
         background.localScale = bgSize;
+    }
+
+    private bool IsBoardReady()
+    {
+        return BoardManager.ins != null && BoardManager.ins.blocks != null && BoardManager.ins.blocks.Length > 0;
     }
 }

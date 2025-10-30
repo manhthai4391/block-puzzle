@@ -21,7 +21,7 @@ public class GameOverAnimation : MonoBehaviour
         }
         else
         {
-            if (!MonetizationManager.ins.IsContinueAdLoaded())
+            /*if (!MonetizationManager.ins.IsContinueAdLoaded())
             {
                 if (GameManager.ins.continueGame)
                     GameManager.ins.offlineLabel.gameObject.SetActive(true);
@@ -40,7 +40,14 @@ public class GameOverAnimation : MonoBehaviour
                 ColorBlock c = GameManager.ins.continueButton.colors;
                 c.normalColor = c.disabledColor = nc;
                 GameManager.ins.continueButton.colors = c;
-            }
+            }*/
+
+            GameManager.ins.offlineLabel.gameObject.SetActive(false);
+            GameManager.ins.continueButton.interactable = true;
+
+            ColorBlock c = GameManager.ins.continueButton.colors;
+            c.normalColor = c.disabledColor = nc;
+            GameManager.ins.continueButton.colors = c;
         }
     }
 

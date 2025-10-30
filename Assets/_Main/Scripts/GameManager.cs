@@ -61,6 +61,11 @@ public class GameManager : MonoBehaviour
         scoreText.text = score.ToString();
         bestScoreIconLayer.GetComponent<Animator>().Play("Idle");
 
+        // Reset Level sequence so spawning can resume if it previously ended with SequenceEndBehavior.Stop
+        if (LevelManager.ins != null)
+            LevelManager.ins.ResetSequence();
+
+        // Clear board cells
         for (int y = 0; y < BoardManager.BOARD_SIZE; y++)
         {
             for (int x = 0; x < BoardManager.BOARD_SIZE; x++)
@@ -73,11 +78,78 @@ public class GameManager : MonoBehaviour
             }
         }
 
+        // Ensure blocks array exists and is large enough
+        if (BoardManager.ins.blocks == null)
+        {
+            int size = BoardManager.BLOCKS_AMOUNT;
+            if (LevelManager.ins != null)
+                size = Mathf.Max(BoardManager.BLOCKS_AMOUNT, LevelManager.ins.PrefabCount > 0 ? LevelManager.ins.PrefabCount : BoardManager.BLOCKS_AMOUNT);
+            BoardManager.ins.blocks = new Block[size];
+        }
+
+        // Destroy any existing block slot objects
         for (int i = 0; i < BoardManager.BLOCKS_AMOUNT; i++)
         {
-            Destroy(BoardManager.ins.blocks[i].gameObject);
-            int x = BoardManager.Rand(0, BoardManager.BLOCK_PREFABS_AMOUNT);
-            BoardManager.ins.blocks[i] = BoardManager.ins.SpawnBlock(i, x);
+            if (BoardManager.ins.blocks[i] != null)
+            {
+                Destroy(BoardManager.ins.blocks[i].gameObject);
+                BoardManager.ins.blocks[i] = null;
+            }
+        }
+
+        // Determine prefab count to pick random indices from (fallback to 18)
+        int prefabCount = 18;
+        if (LevelManager.ins != null && LevelManager.ins.useLevelData && LevelManager.ins.PrefabCount > 0)
+            prefabCount = LevelManager.ins.PrefabCount;
+
+        // Spawn new blocks for slots
+        for (int i = 0; i < BoardManager.BLOCKS_AMOUNT; i++)
+        {
+            int prefabIndex;
+
+            if (LevelManager.ins != null && LevelManager.ins.useLevelData)
+            {
+                if (LevelManager.ins.ActivePlayMode == PlayMode.LevelSequence)
+                {
+                    // consume the sequence
+                    prefabIndex = LevelManager.ins.GetNextPrefabIndex();
+                }
+                else
+                {
+                    prefabIndex = BoardManager.Rand(0, prefabCount);
+                }
+            }
+            else
+            {
+                prefabIndex = BoardManager.Rand(0, prefabCount);
+            }
+
+            if (prefabIndex < 0)
+            {
+                Debug.Log($"RestartGame: prefabIndex < 0 for slot {i} (sequence ended with Stop). Skipping spawn.");
+                continue;
+            }
+
+            // If addressables are preloaded and ready -> synchronous spawn
+            if (LevelManager.ins != null && LevelManager.ins.useLevelData && LevelManager.ins.preloadPrefabs && LevelManager.ins.ready)
+            {
+                BoardManager.ins.blocks[i] = BoardManager.ins.SpawnBlock(i, prefabIndex);
+                if (BoardManager.ins.blocks[i] != null)
+                    BoardManager.ins.blocks[i].SetBasePosition(i);
+            }
+            else if (LevelManager.ins != null && LevelManager.ins.useLevelData)
+            {
+                // Async spawn (will fill slot in callback)
+                int slot = i;
+                BoardManager.ins.SpawnBlockAsync(slot, prefabIndex, (b) =>
+                {
+                    BoardManager.ins.blocks[slot] = b;
+                });
+            }
+            else
+            {
+                Debug.LogError("RestartGame: LevelManager missing; cannot spawn addressable blocks.");
+            }
         }
     }
 
@@ -184,9 +256,16 @@ public class GameManager : MonoBehaviour
     }
 
     private void Awake()
-	{
-        if (!ins)
+    {
+        if (ins == null)
+        {
             ins = this;
+        }
+        else
+        {
+            Destroy(gameObject);
+            return;
+        }
 
         Application.targetFrameRate = 60;
 

@@ -1,6 +1,7 @@
 ﻿using UnityEngine;
 using System.Collections;
 
+[RequireComponent(typeof(BoardManager))]
 public class DestroyManager : MonoBehaviour
 {
     public static DestroyManager ins;
@@ -12,6 +13,19 @@ public class DestroyManager : MonoBehaviour
 
     private BoardManager bm;
     private Vector2Int[] desLinesPos = new Vector2Int[BoardManager.BOARD_SIZE];
+
+    private void Awake()
+    {
+        if (!ins)
+            ins = this;
+        else
+        {
+            Destroy(gameObject);
+            return;
+        }
+
+        bm = GetComponent<BoardManager>();
+    }
 
     public void SetDestroy()
     {
@@ -45,10 +59,27 @@ public class DestroyManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Check if a block tile has a special component and notify the tracker
+    /// </summary>
+    private void CheckAndNotifySpecialTile(BlockTile blockTile)
+    {
+        if (blockTile == null) return;
+
+        // Check if this tile is a special tile by casting
+        SpecialBlockTile specialTile = blockTile as SpecialBlockTile;
+        if (specialTile != null)
+        {
+            // It is a special tile, call its OnDestroyed method
+            specialTile.OnDestroyed();
+        }
+    }
+
     public IEnumerator DestroyAllBlocks()
     {
         AudioManager.ins.PlayDestroySound();
 
+        // First loop: Nullify board references and check special tiles
         for (int i = 0; i < BoardManager.BOARD_SIZE; i++)
         {
             for (int j = 0; j < BoardManager.BOARD_SIZE; j++)
@@ -59,15 +90,24 @@ public class DestroyManager : MonoBehaviour
                 int y = BoardManager.BOARD_SIZE - i - 1;
                 Vector2Int p = desLinesPos[j];
                 if (p.x != -1 && blocksAnimations[p.x, y] && !blocksAnimations[p.x, y].enabled)
+                {
+                    // Check for special tile BEFORE nullifying
+                    CheckAndNotifySpecialTile(bm.boardBlocks[p.x, y]);
                     bm.boardBlocks[p.x, y] = null;
+                }
                 else if (p.y != -1 && blocksAnimations[i, p.y] && !blocksAnimations[i, p.y].enabled)
+                {
+                    // Check for special tile BEFORE nullifying
+                    CheckAndNotifySpecialTile(bm.boardBlocks[i, p.y]);
                     bm.boardBlocks[i, p.y] = null;
+                }
             }
         }
 
         GameManager.ins.ChangePoints(bm.GetEmptyFieldsAmount(), destroyedLines);
         BoardManager.ins.CheckSpace(false);
 
+        // Second loop: Enable animations (this will make Update() run and destroy GameObjects)
         for (int i = 0; i < BoardManager.BOARD_SIZE; i++)
         {
             for (int j = 0; j < BoardManager.BOARD_SIZE; j++)
@@ -77,16 +117,22 @@ public class DestroyManager : MonoBehaviour
 
                 int y = BoardManager.BOARD_SIZE - i - 1;
                 Vector2Int p = desLinesPos[j];
-                if (p.x != -1 && blocksAnimations[p.x, y] && !blocksAnimations[p.x, y].enabled)
+                if (p.x != -1 && blocksAnimations[p.x, y])
                 {
-                    blocksAnimations[p.x, y].enabled = true;
-                    blocksAnimations[p.x, y].SetAnimation(0.25f);
+                    if (!blocksAnimations[p.x, y].enabled)
+                    {
+                        blocksAnimations[p.x, y].enabled = true;
+                        blocksAnimations[p.x, y].SetAnimation(0.25f);
+                    }
                     blocksAnimations[p.x, y] = null;
                 }
-                else if (p.y != -1 && blocksAnimations[i, p.y] && !blocksAnimations[i, p.y].enabled)
+                else if (p.y != -1 && blocksAnimations[i, p.y])
                 {
-                    blocksAnimations[i, p.y].enabled = true;
-                    blocksAnimations[i, p.y].SetAnimation(0.25f);
+                    if (!blocksAnimations[i, p.y].enabled)
+                    {
+                        blocksAnimations[i, p.y].enabled = true;
+                        blocksAnimations[i, p.y].SetAnimation(0.25f);
+                    }
                     blocksAnimations[i, p.y] = null;
                 }
             }
@@ -106,7 +152,11 @@ public class DestroyManager : MonoBehaviour
                 {
                     BlockTile b = BoardManager.ins.boardBlocks[x, y];
                     if (b)
+                    {
+                        // Check for special tile before destroying
+                        CheckAndNotifySpecialTile(b);
                         b.Destroy(0.25f);
+                    }
 
                     BoardManager.ins.boardBlocks[x, y] = null;
                 }
@@ -120,7 +170,11 @@ public class DestroyManager : MonoBehaviour
                 {
                     BlockTile b = BoardManager.ins.boardBlocks[x, y];
                     if (b)
+                    {
+                        // Check for special tile before destroying
+                        CheckAndNotifySpecialTile(b);
                         b.Destroy(0.25f);
+                    }
 
                     BoardManager.ins.boardBlocks[x, y] = null;
                 }
@@ -129,12 +183,4 @@ public class DestroyManager : MonoBehaviour
 
         BoardManager.ins.CheckBoard();
     }
-
-    private void Awake()
-	{
-        if (!ins)
-            ins = this;
-
-        bm = GetComponent<BoardManager>();
-	}
 }

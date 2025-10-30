@@ -31,6 +31,7 @@ public class ProgressManager : MonoBehaviour
         if (!GameManager.ins.firstBeatenScore)
             GameManager.ins.bestScoreIconLayer.GetComponent<Animator>().Play("Beaten score");
 
+        // Restore board tiles (background cells) colors
         for (int y = 0; y < BoardManager.BOARD_SIZE; y++)
         {
             for (int x = 0; x < BoardManager.BOARD_SIZE; x++)
@@ -46,14 +47,10 @@ public class ProgressManager : MonoBehaviour
             }
         }
 
-        for (int i = 0; i < BoardManager.BLOCKS_AMOUNT; i++)
-        {
-            if (PlayerPrefs.HasKey(i + "block"))
-            {
-                int prefabIndex = PlayerPrefs.GetInt(i + "block");
-                BoardManager.ins.blocks[i] = BoardManager.ins.SpawnBlock(i, prefabIndex);
-            }
-        }
+        // NOTE:
+        // Saved "block slot" restoration (PlayerPrefs keys "0block","1block","2block") is now handled by BoardManager
+        // when the level is loaded (LevelManager.OnLevelLoaded). We do not spawn addressable blocks here because the
+        // LevelData / Addressables are only loaded when the Play button is pressed.
     }
 
     public static void SaveProgress()
@@ -85,8 +82,17 @@ public class ProgressManager : MonoBehaviour
                 }
             }
 
-            for (int i = 0; i < BoardManager.BLOCKS_AMOUNT; i++)
-                PlayerPrefs.SetInt(i + "block", BoardManager.ins.blocks[i].prefabIndex);
+            //TODO: TEST
+            if(BoardManager.ins.blocks != null)
+            {
+                for (int i = 0; i < BoardManager.ins.blocks.Length; i++)
+                {
+                    if(BoardManager.ins.blocks[i] != null)
+                    {
+                        PlayerPrefs.SetInt(i + "block", BoardManager.ins.blocks[i].prefabIndex);
+                    }
+                }
+            }
         }
         // // // // // // // // //      DO NOT SAVE BOARD PROGRESS (IS GAME OVER)      // // // // // // // // //
         else
@@ -99,8 +105,13 @@ public class ProgressManager : MonoBehaviour
                 for (int x = 0; x < BoardManager.BOARD_SIZE; x++)
                         SetColor(GetBlockKey(x, y), Color.black);
 
+            // choose fallback prefab-count: use LevelManager.PrefabCount if available, otherwise fall back to 18
+            int prefabCount = 18;
+            if (LevelManager.ins != null && LevelManager.ins.useLevelData && LevelManager.ins.PrefabCount > 0)
+                prefabCount = LevelManager.ins.PrefabCount;
+
             for (int i = 0; i < BoardManager.BLOCKS_AMOUNT; i++)
-                PlayerPrefs.SetInt(i + "block", BoardManager.Rand(0, BoardManager.BLOCK_PREFABS_AMOUNT));
+                PlayerPrefs.SetInt(i + "block", BoardManager.Rand(0, prefabCount));
         }
     }
 
@@ -170,7 +181,10 @@ public class ProgressManager : MonoBehaviour
         yield return new WaitForSeconds(0.02f);
 
         LoadProgress();
-        BoardManager.ins.CheckBoard(true);
+
+        // BoardManager.CheckBoard may be called later once level data / blocks are created.
+        if (BoardManager.ins != null)
+            BoardManager.ins.CheckBoard(true);
     }
 
     private void OnApplicationPause(bool isPaused)
@@ -222,7 +236,7 @@ public class ProgressManager : MonoBehaviour
         
         if (!PlayerPrefs.HasKey(k))
         {
-            Debug.LogError("The float array does not exist!");
+            Debug.Log("The float array does not exist!");
             return null;
         }
 

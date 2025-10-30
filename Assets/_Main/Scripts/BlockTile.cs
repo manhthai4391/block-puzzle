@@ -26,7 +26,7 @@ public class BlockTile : MonoBehaviour
         anim.SetAnimation(d);
     }
 
-    private void Awake()
+    protected virtual void Awake()
 	{
         defaultColor = GetComponent<SpriteRenderer>().color;
 	}

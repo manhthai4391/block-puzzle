@@ -1,6 +1,5 @@
 ﻿using UnityEngine;
-using UnityEngine.Monetization;
-using GoogleMobileAds.Api;
+//using GoogleMobileAds.Api;
 using System;
 using System.Collections;
 
@@ -13,9 +12,9 @@ public class MonetizationManager : MonoBehaviour
     bool earnReward = false;
     string continueAdId;
 
-    RewardedAd continueAd;
+    //RewardedAd continueAd;
 
-    void Start()
+    /*void Start()
     {
         if (!ins)
         {
@@ -106,7 +105,7 @@ public class MonetizationManager : MonoBehaviour
     void HandleAdFailedToShow(object sender, AdErrorEventArgs args, string adName)
     {
         Debug.LogError($"{adName} failed to show with message: {args.Message}");
-    }
+    }*/
 
     /*public static MonetizationManager ins;
 
